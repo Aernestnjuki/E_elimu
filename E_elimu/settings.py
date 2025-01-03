@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-# import django_on_heroku
+# import django_heroku
 # import dj_database_url
 from datetime import timedelta
 from environs import Env
