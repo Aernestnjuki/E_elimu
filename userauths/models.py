@@ -30,7 +30,7 @@ class User(AbstractUser):
 
 # this new model will be the one user to update profile picture, password instead of the User model above
 class Profile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     image = models.FileField(upload_to="user_folder", default="default-user.jpg", null=True, blank=True)
     full_name = models.CharField( max_length=200)
     country = models.CharField(max_length=100, null=True, blank=True)
@@ -51,7 +51,14 @@ class Profile(models.Model):
 
 
 # creating a signal that will automatically create a profile for a new user
-@receiver(post_save, sender=User)
-def create_and_save_user_profile(sender, instance, **kwargs):
-    profile_save = Profile.objects.create(user=instance)
-    profile_save.save()
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+def save_user_profile(sender, instance, **kwargs):
+    instance.profile.save()
+
+post_save.connect(create_user_profile, sender=User)
+post_save.connect(save_user_profile, sender=User)
+
+

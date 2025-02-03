@@ -102,12 +102,25 @@ class ChangePasswordAPIView(generics.CreateAPIView):
 
         user = User.objects.get(id=user_id)
 
+        if (old_password == new_password):
+            return Response({'Messages': 'This password is already used',  'icon': 'error'}, status=status.HTTP_400_BAD_REQUEST)
+
         if user is not None:
             if check_password(old_password, user.password):
                 user.set_password(new_password)
                 user.save()
-                return Response({'Messages': 'Paasword changed successfully', 'icon': 'success'}, status=status.HTTP_201_CREATED)
+                return Response({'Messages': 'Password changed successfully', 'icon': 'success'}, status=status.HTTP_201_CREATED)
             else:
-                return Response({'Messages': 'Old Paasword is incorrect',  'icon': 'warning'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'Messages': 'Old Password is incorrect',  'icon': 'warning'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({'Messages': 'User does not exist',  'icon': 'error'}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class ProfileAPIView(generics.RetrieveUpdateAPIView):
+    serializer_class = api_serializer.ProfileSerializer
+    permission_classes = [AllowAny]
+
+    def get_object(self):
+        user_id = self.kwargs['user_id']
+        user = User.objects.get(id=user_id)
+        return Profile.objects.get(user=user)

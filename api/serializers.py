@@ -7,7 +7,7 @@ class CategorySerializer(ModelSerializer):
 
     class Meta:
         model = api_models.Category
-        fields = ['title', 'image', 'slug', 'course_count']
+        fields = ['id', 'title', 'image', 'slug', 'course_count']
 
 
 class TeacherSerializer(ModelSerializer):
@@ -30,11 +30,10 @@ class TeacherSerializer(ModelSerializer):
 
 class VariantItemSerializer(serializers.ModelSerializer):
 
-    # variant = serializers.PrimaryKeyRelatedField(queryset=api_models.Variant.objects.all())
-
     class Meta:
         model = api_models.VariantItem
-        fields = ['variant_item_id', 'title', 'description', 'file', 'duration', 'content_duration', 'preview', 'date']
+        fields = '__all__'
+        
 
     def __init__(self, *args, **kwargs):
         super(VariantItemSerializer, self).__init__(*args, **kwargs)
@@ -47,7 +46,8 @@ class VariantItemSerializer(serializers.ModelSerializer):
 
 class VariantSerializer(ModelSerializer):
 
-    variant_item = VariantItemSerializer(many=True)
+    variant_items = VariantItemSerializer(many=True)
+    items = VariantItemSerializer(many=True)
 
     class Meta:
         model = api_models.Variant
@@ -260,9 +260,12 @@ class CertificateSerializer(ModelSerializer):
 
 class NotificationSerializer(ModelSerializer):
 
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
+
     class Meta:
         model = api_models.Notification
         fields = '__all__'
+
 
 class CouponSerializer(ModelSerializer):
 
@@ -275,6 +278,15 @@ class WishListSerializer(ModelSerializer):
     class Meta:
         model = api_models.WishList
         fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super(WishListSerializer, self).__init__(*args, **kwargs)
+        request = self.context.get("request")
+
+        if request and request.method == "POST":
+            self.Meta.depth = 0
+        else:
+            self.Meta.depth = 3
 
 
 class CountrySerializer(ModelSerializer):

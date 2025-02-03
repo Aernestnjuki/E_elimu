@@ -158,7 +158,10 @@ class Variant(models.Model):
     def __str__(self):
         return self.title
     
-    def variant_item(self):
+    def variant_items(self):
+        return VariantItem.objects.filter(variant=self)
+    
+    def items(self):
         return VariantItem.objects.filter(variant=self)
     
     
@@ -255,7 +258,7 @@ class CartOrder(models.Model):
     saved = models.DecimalField(decimal_places=2, default=0.000, max_digits=12)
     payment_status = models.CharField(choices=PAYMENT_STATUS, default='Processing', max_length=100)
     full_name = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(unique=True, max_length=200, null=True, blank=True)
+    email = models.EmailField(max_length=200, null=True, blank=True)
     country = models.CharField(max_length=100, null=True, blank=True)
     coupons = models.ManyToManyField("api.Coupon", blank=True)
     stripe_session_id = models.CharField(max_length=1000, null=True, blank=True)
@@ -364,7 +367,7 @@ class Review(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     review = models.TextField()
-    repy = models.CharField(max_length=1000, null=True, blank=True)
+    reply = models.CharField(max_length=1000, null=True, blank=True)
     rating = models.IntegerField(choices=RATING, default=None)
     active = models.BooleanField(default=False)
     date = models.DateTimeField(default=timezone.now)

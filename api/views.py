@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status, generics, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from django.shortcuts import redirect
 from django.db import models
@@ -400,6 +401,8 @@ class PaymentSuccessAPIView(generics.CreateAPIView):
             else: 
                 return Response({"Message": "Paypal Error occured"}, status=status.HTTP_400_BAD_REQUEST)
 
+        
+
         # stripe payment success
         if session_id != "null":
             session = stripe.checkout.Session.retrieve(session_id)
@@ -614,13 +617,13 @@ class StudentWishListListCreateAPIView(generics.ListCreateAPIView):
 
         if wishlist:
             wishlist.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response({"Message": "Wishlist Deleted"}, status=status.HTTP_200_OK)
         else:
             api_models.WishList.objects.create(
                 user=user,
                 course=course
             )
-            return Response({"Message": "Wishiist Created"}, status=status.HTTP_201_CREATED)
+            return Response({"Message": "Wishist Created"}, status=status.HTTP_201_CREATED)
         
 class QuestionAnswerListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = api_serializers.QuestionAnswerSerializer
@@ -857,7 +860,7 @@ class TeacherNotificationListAPIView(generics.ListAPIView):
         teacher = api_models.Teacher.objects.get(id=teacher_id)
         return api_models.Notification.objects.filter(teacher=teacher, seen=False)
     
-class TeacherNotificationDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+class TeacherNotificationDetailAPIView(generics.RetrieveUpdateAPIView):
     serializer_class = api_serializers.NotificationSerializer
     permission_classes = [AllowAny]
 
@@ -865,7 +868,7 @@ class TeacherNotificationDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         teacher_id = self.kwargs['teacher_id']
         notification_id = self.kwargs['notification_id']
         teacher = api_models.Teacher.objects.get(id=teacher_id)
-        return api_models.Notification.objects.filter(teacher=teacher, id=notification_id)
+        return api_models.Notification.objects.filter(teacher=teacher, id=notification_id).first()
 
 class CourseCreateAPIView(generics.CreateAPIView):
     queryset = api_models.Course.objects.all()
@@ -882,12 +885,13 @@ class CourseCreateAPIView(generics.CreateAPIView):
                 index = key.split('[')[1].split(']')[0]
                 title = value
 
-                variant_data = {'title': title}
+                variant_dict = {'title': title}
                 item_data_list = []
                 current_item = {}
+                variant_data = []
 
-                for item_key, item_value in self.request.data.item():
-                    if f'variant[{index}][items]' in item_key:
+                for item_key, item_value in self.request.data.items():
+                    if f'variants[{index}][items]' in item_key:
                         field_name = item_key.split('[')[-1].split(']')[0]
                         if field_name == 'title':
                             if current_item:
@@ -899,7 +903,7 @@ class CourseCreateAPIView(generics.CreateAPIView):
                 if current_item:
                     item_data_list.append(current_item) 
                 
-                variant_data.append({'variant_data': variant_data, 'variant_item_data': item_data_list})
+                variant_data.append({'variant_data': variant_dict, 'variant_item_data': item_data_list})
 
         for data_entry in variant_data:
             variant = api_models.Variant.objects.create(title=data_entry['variant_data']['title'], course=course_instance)
@@ -926,12 +930,13 @@ class CourseUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = api_models.Course.objects.all()
     serializer_class = api_serializers.CourseSerializer
     permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
         teacher_id = self.kwargs['teacher_id']
         course_id = self.kwargs['course_id']
         teacher = api_models.Teacher.objects.get(id=teacher_id)
-        course = api_models.Course.objects.get(teacher=teacher, id=course_id)
+        course = api_models.Course.objects.get(teacher=teacher, course_id=course_id)
 
         return course
     
@@ -959,18 +964,19 @@ class CourseUpdateAPIView(generics.RetrieveUpdateAPIView):
 
     def update_variant(self, course, request_data):
         for key, value in request_data.items():
-            if key.startwith('variant') and '[variant_title]' in key:
+            if key.startswith('variant') and '[variant_title]' in key:
                 index = key.split('[')[1].split(']')[0]
                 title = value
 
                 id_key = f'variants[{index}][variant_id]'
                 variant_id = request_data.get(id_key)
 
-                variant_data = {'title': title}
+                variant_dict = {'title': title}
                 item_data_list = []
                 current_item = {}
+                variant_data = []
 
-                for item_key, item_value in request_data.item():
+                for item_key, item_value in request_data.items():
                     if f'variant[{index}][items]' in item_key:
                         field_name = item_key.split('[')[-1].split(']')[0]
                         if field_name == 'title':
@@ -983,7 +989,7 @@ class CourseUpdateAPIView(generics.RetrieveUpdateAPIView):
                 if current_item:
                     item_data_list.append(current_item) 
                 
-                variant_data.append({'variant_data': variant_data, 'variant_item_data': item_data_list})
+                variant_data.append({'variant_data': variant_dict, 'variant_item_data': item_data_list})
 
                 existing_variant = course.variant_set.filter(id=variant_id).first()
 
@@ -1081,6 +1087,8 @@ class TeacherCourseVariantDeleteAPIView(generics.DestroyAPIView):
         variant_id = self.kwargs['variant_id']
         teacher_id = self.kwargs['teacher_id']
         course_id = self.kwargs['course_id']
+
+        print("variant_id ===============", variant_id)
 
         teacher = api_models.Teacher.objects.get(id=teacher_id)
         course = api_models.Course.objects.get(teacher=teacher, course_id=course_id)
